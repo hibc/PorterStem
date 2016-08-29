@@ -5,6 +5,8 @@
 '''
 
 #import nltk
+from nltk.corpus import wordnet as wn
+from nltk.stem import WordNetLemmatizer
 import re
 import sys
 
@@ -12,6 +14,8 @@ class StemWord:
 
     def __init__(self):
         self.stem = []
+        self.lemmatizer = WordNetLemmatizer()
+
 
     def step_1a(self, word):
         '''
@@ -26,7 +30,6 @@ class StemWord:
         # * is greedy and ?* is non greedy
         # result is list of tuple
         result = re.findall(r'^(.*?)(SSES|IES|SS|S)$', word)
-        #print result[0][0]
 
         if len(result) == 0:
             return word
@@ -41,10 +44,14 @@ class StemWord:
         elif ( suffix == 'SS'):
             stem = stem + 'SS'
         elif ( suffix == 'S'):
+            if (stem == 'GOE' or stem =='DOE'):
+                stem = stem[:2]
+            elif(stem == 'HI'):
+                stem = stem+'S'
             stem = stem
         else:
-            print >> sys.stderr, 'No mapping found in step 1a'
-
+            #print >> sys.stderr, 'No mapping found in step 1a'
+            pass
         return stem
 
     def step_1b(self, word):
@@ -58,7 +65,7 @@ class StemWord:
         '''
 
         consonant_vowel_dict = self.to_consonant_vowel(word)
-        print >> sys.stderr, consonant_vowel_dict
+        #print >> sys.stderr, consonant_vowel_dict
 
         # which rule does the word map to ??
         result = re.findall(r'^(.*?)(EED|ED|ING)$', consonant_vowel_dict.keys()[0])
@@ -94,18 +101,20 @@ class StemWord:
                 ret_word = result[0][0]
                 second_or_third = True
         else:
-            print >> sys.stderr, 'No matching found in step 1b'
+            #print >> sys.stderr, 'No matching found in step 1b'
+            pass
 
         if (second_or_third is not True):
             return word
 
         #case with AT -> ATE
-        print >> sys.stderr, 'rule_123 ...'
+        #print >> sys.stderr, 'rule_123 ...'
         rule_123 = re.findall(r'^(.*?)(AT|BL|IZ)$', ret_word)
-        print >> sys.stderr, rule_123
+        #print >> sys.stderr, rule_123
 
         if ( len(rule_123) == 0 ):
-            print >> sys.stderr, 'go to rule 4'
+            #print >> sys.stderr, 'go to rule 4'
+            pass
         elif ( rule_123[0][1] == 'AT' ):
             return rule_123[0][0] + 'ATE'
         elif( rule_123[0][1] == 'BL'):
@@ -118,9 +127,10 @@ class StemWord:
         rule_4 = re.findall(r'^(.*?)(AA|BB|CC|DD|EE|FF|GG|HH|II|JJ|KK|LL|MM|NN|OO|PP|QQ|RR|SS|TT|UU|VV|WW|XX|YY|ZZ)$', ret_word)
 
         if (len(rule_4) ==0 ):
-            print >> sys.stderr, 'No matching for rule 4'
+            #print >> sys.stderr, 'No matching for rule 4'
+            pass
         elif ( (len(rule_4) > 0) and ((rule_4[0][1] != 'LL') and (rule_4[0][1] != 'SS') and (rule_4[0][1] != 'ZZ'))):
-            print >> sys.stderr, rule_4[0][1]
+            #print >> sys.stderr, rule_4[0][1]
             return rule_4[0][0] + rule_4[0][1][0]
 
         # rule5: (m=1 and *o) -> E
@@ -129,12 +139,12 @@ class StemWord:
         stem = self.to_consonant_vowel(ret_word, True)
 
         rule_5 = re.findall(r'^(.*?)(CVC)$', stem.values()[0])
-        print >> sys.stderr, rule_5
+        #print >> sys.stderr, rule_5
 
         if ( len(rule_5) > 0 ):
             # reduce the consonant_vowel
             norm_list = self.normalize_list(stem.values()[0])
-            print >> sys.stderr, norm_list
+            #print >> sys.stderr, norm_list
             m = (''.join(norm_list)).count('VC')
             if ( m == 1):
                 ret_word = stem.keys()[0] + 'E'
@@ -191,7 +201,7 @@ class StemWord:
         '''
         count = False
         parse_stem = re.findall(r'^(.*?)(ATIONAL|TIONAL|ENCI|ANCI|IZER|ABLI|ALLI|ENTLI|ELI|OUSLI|IZATION|ATION|ATOR|ALISM|IVENESS|FULNESS|OUSNESS|ALITI|IVITI|BILITI)$', word)
-        print parse_stem
+        #print parse_stem
         if len(parse_stem) == 0:
             return word
         else:
@@ -245,12 +255,13 @@ class StemWord:
                 (m>0) FUL   ->
                 (m>0) NESS  ->
         '''
+
         parse_stem = re.findall(r'^(.*?)(ICATE|ATIVE|ALIZE|ICITI|ICAL|FUL|NESS)$', word)
 
         if len(parse_stem) == 0:
             return word
 
-        print parse_stem
+        #print parse_stem
         stem_consoant = self.to_consonant_vowel(parse_stem[0][0])
         m = (stem_consoant.values()[0]).count('VC')
 
@@ -267,6 +278,7 @@ class StemWord:
             return parse_stem[0][0] + 'AL'
         else:
             return word
+
     def step_4(self, word):
         '''
             Rules:
@@ -292,21 +304,23 @@ class StemWord:
         '''
         parse_stem = re.findall(r'^(.*?)(AL|ANCE|ENCE|ER|IC|ABLE|IBLE|ANT|EMENT|MENT|ENT|OU|ISM|ATE|ITI|OUS|IVE|IZE|ION)$', word)
 
-        print parse_stem
+        #print parse_stem
         if len(parse_stem) == 0:
             return word
 
         if parse_stem[0][1] != 'ION':
+
             consonant = self.to_consonant_vowel(parse_stem[0][0])
+            
             m = (consonant.values()[0]).count('VC')
-            if m > 0:
+            if m > 1:
                 return consonant.keys()[0]
             else:
                 return word
         else:
             consonant = self.to_consonant_vowel(parse_stem[0][0])
             m = (consonant.values()[0]).count('VC')
-            if m > 0:
+            if m > 1:
                 end_letter = re.findall(r'^(.*?)(S|T)$', consonant.keys()[0])
                 if len(end_letter) != 0:
                     return consonant.keys()[0]
@@ -314,6 +328,7 @@ class StemWord:
                     return word
             else:
                 return word
+
     def step_5a(self, word):
         '''
             rules:
@@ -363,20 +378,28 @@ class StemWord:
             returns the dictionary { word: consonant_vowel}
 
             consonant:
-                1) other than A,E,I,O,U
-                2) other than y preceded by consonant
+                1) a letter other than A,E,I,O,U
+                2) a letter other than y preceded by consonant: 
+                    if Y is preceded by C, then it's vowel
+                    if Y is preceded by V, then it's consonant
+            
             Not consonant means = vowel
 
         '''
         letter_list = list(word)
         ret_list = []
-
-        for letter in letter_list:
+        #print letter_list
+        
+        for i,letter in enumerate (letter_list):
             if (letter == 'A' or letter == 'E' or letter == 'I' or letter == 'O' or letter == 'U'):
                 ret_list.append('V')
             elif (letter == 'Y'):
-                if (ret_list[len(ret_list)-1] == 'C'):
-                    ret_list.append('V')
+                #print ret_list
+                if( len(ret_list) > 0):
+                    if (ret_list[i-1] == 'C'):
+                        ret_list.append('V')
+                    else:
+                        ret_list.append('C')
                 else:
                     ret_list.append('C')
             else:
@@ -419,30 +442,86 @@ class StemWord:
 
         return ret_list
 
+    def do_stem(self, word):
+        '''
+            A problem with porter stemer is that
+            when the word is ending with -ies,
+            it replaces 'ies' with 'i'
+
+            ex: multiplies -> multipli
+
+            we want to get the root form.
+            I found that lemmatizer could give us the
+            correct root form when the word is ending with -ies.
+
+        '''
+        result = re.findall(r'^(.*?)(IES)$', word)
+        
+        if (len(result) != 0):
+            word = word.lower()
+            return str(self.lemmatizer.lemmatize(word))
+
+        step_1a = self.step_1a(word)
+        step_1b = self.step_1b(step_1a)
+        step_1c = self.step_1c(step_1b)
+        step_2 = self.step_2(step_1c)
+        step_3 = self.step_3(step_2)
+        step_4 = self.step_4(step_3)
+        step_5a = self.step_5a(step_4)
+        stem = self.step_5b(step_5a)
+
+        # we want to search the final stem in the corpus
+        # if we cannot find it in there, then
+        # we just want to use the original word.
+        # but gotta figure out how to reduce the import time.
+        if (len(wn.synsets(stem)) != 0):
+            return stem
+        else:
+            return word
+
 if __name__ == "__main__":
     user_input = raw_input()
+    print ''
     sw = StemWord()
 
     step_1a = sw.step_1a(str(user_input))
-    # print stem_1a
+    print 'step_1a: ',
+    print step_1a
+    print ''
 
     step_1b = sw.step_1b(step_1a)
-    #print stem_1b
+    print 'step_1b: ',
+    print step_1b
+    print ''
 
     step_1c = sw.step_1c(step_1b)
-    #print stem_1c
+    print 'step_1c: ',
+    print step_1c
+    print ''
 
     step_2 = sw.step_2(step_1c)
-    # print step_2
+    print 'step_2: ',
+    print step_2
+    print ''
 
     step_3 = sw.step_3(step_2)
-    # print step_3
+    print 'step_3: ',
+    print step_3
+    print ''
 
     step_4 = sw.step_4(step_3)
-    # print step_4
+    print 'step_4: ',
+    print step_4
+    print ''
 
     step_5a = sw.step_5a(step_4)
-    # print step_5a
+    print 'step_5a: ',
+    print step_5a
+    print ''
 
     stem = sw.step_5b(step_5a)
-    print stem
+    print 'Final: ',
+    if (len(wn.synsets(stem)) != 0):
+        print stem
+    else:
+        print user_input
